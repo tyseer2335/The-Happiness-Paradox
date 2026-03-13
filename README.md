@@ -21,6 +21,6 @@ The analysis uses data from the [VAST Challenge 2022](https://vast-challenge.git
 
 ## Setup
 
-Download datasets from :[Google Drive](https://drive.google.com/drive/folders/1Tx2JAwF9iElchq4IsqKeX9lI93FNlq01?usp=sharing) and place them in the `data/` folder before Rmd file.
+Download datasets from [Google Drive](https://drive.google.com/drive/folders/1Tx2JAwF9iElchq4IsqKeX9lI93FNlq01?usp=sharing) and place them in the `data/` folder before Rmd file.
 
 Open `code.Rmd` in RStudio and knit to PDF or HTML. Required packages will be installed automatically if not already present.
