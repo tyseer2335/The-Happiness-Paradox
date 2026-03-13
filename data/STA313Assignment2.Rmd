@@ -1,0 +1,225 @@
+---
+title: 'The Happiness Paradox: Why Income Alone Is Not the Answer'
+author: "Tyseer Toufiq"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+if (!require(tidyverse)) install.packages("tidyverse")
+if (!require(lubridate)) install.packages("lubridate")
+if (!require(scales)) install.packages("scales")
+
+library(tidyverse)
+library(lubridate)
+library(scales)
+
+participants <- read_csv("data/Participants.csv")
+financial <- read_csv("data/FinancialJournal.csv")
+participant1 <- read_csv("data/ParticipantStatusLogs1.csv")
+apartments <- read_csv("data/Apartments.csv")
+
+# --- Data Processing for Chart 1 ---
+financial <- financial %>%
+  mutate(
+    timestamp = ymd_hms(timestamp),
+    week = floor_date(timestamp, unit = "week")
+  )
+
+weekly_net <- financial %>%
+  group_by(participantId, week) %>%
+  summarise(weekly_net_amount = sum(amount, na.rm = TRUE), .groups = "drop")
+
+avg_income <- weekly_net %>%
+  group_by(participantId) %>%
+  summarise(avg_weekly_net = mean(weekly_net_amount, na.rm = TRUE), .groups = "drop")
+
+df <- participants %>%
+  left_join(avg_income, by = "participantId")
+
+df$educationLevel <- factor(
+  df$educationLevel,
+  levels = c("Low", "HighSchoolOrCollege", "Bachelors", "Graduate"),
+  labels = c("Low", "High School\nor College", "Bachelor's", "Graduate")
+)
+
+# --- Data Processing for Charts 2, 3, 4 ---
+resident_data <- participants %>%
+  inner_join(participant1, by = "participantId")
+
+resident_data_clean <- resident_data %>%
+  distinct(currentLocation, .keep_all = TRUE)
+
+apartment_data_clean <- apartments %>%
+  select(rentalCost, numberOfRooms, apartmentId) %>%
+  inner_join(resident_data, by = "apartmentId") %>%
+  distinct(apartmentId, .keep_all = TRUE)
+```
+
+Needless to say, the cost of living has been a hot topic as of late. Whether it's rent, groceries, tuition, or just miscellaneous expenses, more and more people find themselves with less and less disposable income. For many, this has led to an unstable state of living, where even a slight personal hiccup can lead to drastic consequences something which can be very stressful. Having extra income to create "rainy day funds" can alleviate these stresses. But even people with higher incomes have faced new challenges affecting their joy, especially since the pandemic. For example, social isolation has been on the rise, with studies showing that roughly half of U.S. adults reported experiencing loneliness even before the pandemic began (Murthy, 2023). This led us to ask the question: is higher disposable income associated with higher happiness, or are other factors such as social activities, level of education, or number of days spent working more indicative? To explore this, we analyzed detailed financial and behavioral data from over 1,000 residents of a fictional city, collected over 15 months as part of the VAST Challenge 2022 participatory urban planning exercise (IEEE VAST, 2022). What we found surprised us.
+
+## Who Earns What? The Education-Income Relationship
+
+```{r chart1, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=5}
+ggplot(df, aes(x = educationLevel, y = avg_weekly_net, fill = educationLevel)) +
+  geom_boxplot(outlier.alpha = 0.3, outlier.size = 1.5) +
+  scale_y_continuous(labels = dollar_format(prefix = "$")) +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    title = "Figure 1: Disposable Income by Education Level",
+    subtitle = "Weekly net income varies widely within every education group",
+    x = "Education Level",
+    y = "Average Net Dollars per Week"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "none"
+  )
+```
+
+Before examining happiness directly, we first explored who earns what. A common assumption is that higher education leads to higher income, which in turn leads to a better quality of life.
+
+We chose boxplots for this comparison because they reveal the full distribution of income within each group, including the median, spread, and outliers, which a simple bar chart of averages would hide. Figure 1 shows the distribution of average weekly disposable income across four education levels. As expected, residents with graduate degrees earn the most, with a median of roughly $900 per week. However, the relationship is not as straightforward as one might think. Surprisingly, residents with a high school or college education actually earn less on average than those in the lowest education category a finding that challenges the clean "more education, more money" narrative.
+
+One possible explanation is that lower education workers may hold trade or manual labour jobs that pay competitively, while high school or college educated residents may be stuck in lower wage service roles. Furthermore, the spread within each group is substantial, and bachelor's degree holders in particular show a high number of outliers, with some earning upwards of $3,000 per week, far above the typical range of $450 to $900. Graduate degree holders show a similar pattern, though with fewer extreme cases.
+
+These outliers may represent individuals in specialized or high demand fields, but for the majority of residents, income remains tightly clustered regardless of education level. This raises a deeper question: if income itself is this unpredictable, does it even matter for happiness?
+
+## Does More Money Mean More Happiness?
+
+```{r chart2, echo=FALSE, message=FALSE, warning=FALSE, fig.width=9, fig.height=6}
+resident_data_clean <- resident_data_clean %>%
+  mutate(educationLevel = factor(
+    educationLevel,
+    levels = c("Low", "HighSchoolOrCollege", "Bachelors", "Graduate"),
+    labels = c("Low", "High School or College", "Bachelor's", "Graduate")
+  ))
+
+ggplot(resident_data_clean, aes(x = weeklyExtraBudget, y = joviality, color = educationLevel)) +
+  geom_jitter(alpha = 0.5, size = 1.8, width = 0.2, height = 0.02) +
+  geom_smooth(method = "lm", linetype = "dashed", colour = "black", se = FALSE) +
+  facet_wrap(~educationLevel) +
+  scale_color_brewer(palette = "Set1") +
+  scale_x_continuous(labels = dollar_format(prefix = "$")) +
+  labs(
+    title = "Figure 2: Happiness Rating Decreases as Disposable Income Increases",
+    subtitle = "Trend lines show a negative or flat relationship across all education levels",
+    x = "Disposable Income ($ per Week)",
+    y = "Happiness Rating (0 to 1)",
+    color = "Education Level"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "none"
+  )
+```
+
+To test whether income directly influences happiness, we used scatter plots faceted by education level so that every individual data point is visible, rather than summarizing into averages which could mask the wide variation (Figure 2). The results are striking. Across all four education groups, the trend lines slope downward or remain flat. In other words, higher disposable income does not correspond to higher happiness and in some cases, it may even correspond to slightly lower happiness.
+
+This pattern holds regardless of whether someone has a low education level or a graduate degree. The scatter plots also reveal substantial variation at every income level, as happiness scores span nearly the full 0 to 1 range. This suggests that income explains very little of the differences in happiness between individuals, and that other factors must be playing a much larger role.
+
+One possible explanation for this counterintuitive finding is that higher earners may face greater work related stress, longer hours, or higher expectations, factors that erode well being despite financial success. Another possibility is that income serves more as a means to an end rather than a source of happiness in itself. What you buy with your money, and how you spend your time, may matter far more than the number on your paycheck. This leads us to a more nuanced question instead of asking how much people earn, perhaps we should be asking how they spend it
+
+## If Not Income, Then What?
+
+While we have established that disposable income does not directly increase happiness the way people might expect, money still plays a role, just not in the way we assumed. Disposable income is the money left over after all your needs are met, but what if people decide to budget more for their necessities? We investigated this by examining residents monthly rent and daily food budgets.
+
+### Rent and Happiness
+
+```{r chart3, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=5}
+apartment_data_clean %>%
+  mutate(
+    RentLevel = case_when(
+      rentalCost < 600 ~ "Low",
+      rentalCost >= 600 & rentalCost < 1000 ~ "Medium",
+      rentalCost >= 1000 ~ "High"
+    ),
+    RentLevel = factor(RentLevel, levels = c("Low", "Medium", "High"))
+  ) %>%
+  ggplot(aes(x = rentalCost, y = joviality, color = RentLevel)) +
+    geom_jitter(alpha = 0.6, size = 2, width = 5, height = 0.02) +
+    geom_smooth(
+      aes(group = RentLevel),
+      method = "lm",
+      linetype = "dashed",
+      colour = "black",
+      se = TRUE
+    ) +
+    scale_color_manual(values = c("Low" = "#F05E5B", "Medium" = "#c62828", "High" = "#7f0000")) +
+    scale_x_continuous(labels = dollar_format(prefix = "$")) +
+    labs(
+      title = "Figure 3: Happiness vs. Rent Prices Grouped by Rent Level",
+      subtitle = "Higher rent is associated with higher happiness, but with diminishing returns",
+      x = "Monthly Rent ($)",
+      y = "Happiness (0 to 1)",
+      color = "Rent Level"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(plot.title = element_text(face = "bold"))
+```
+
+We use a scatter plot with grouped regression lines here to show both individual level variation and within group trends, with shaded confidence intervals to communicate uncertainty in the estimates. In this plot, we have monthly rent on the x-axis and happiness on the y-axis, with residents grouped into low, medium, and high rent categories. What stands out right away is that residents paying higher rent tend to be happier, and the variance in their happiness is smaller. Higher rent typically provides tenants with extra living space, better amenities, or access to a nicer neighborhood, factors that can meaningfully increase quality of life.
+
+The regression lines within each group reveal an important nuance. For the low and medium groups, increasing rent corresponds to increasing happiness, likely for the same quality of life reasons we just discussed. But for the high rent group, the trend line flattens spending more on rent no longer translates to greater happiness. This exemplifies the diminishing returns of spending. If you already have a comfortable living situation, spending extra does not make you feel much better compared to starting from a worse apartment. In other words, even if you have extra disposable income, once your basic housing needs are comfortably met, that additional money does not make a meaningful difference.
+
+### Food Budget and Happiness
+
+```{r chart4, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=7}
+resident_data_clean %>%
+  mutate(dailyFoodBudget = factor(
+    paste0("$", dailyFoodBudget, "/day"),
+    levels = c("$12/day", "$16/day", "$20/day")
+  )) %>%
+  ggplot(aes(x = joviality, fill = dailyFoodBudget)) +
+    geom_histogram(bins = 20, alpha = 0.7, color = "white") +
+    scale_fill_manual(values = c("$12/day" = "#39973E", "$16/day" = "#1b5e20", "$20/day" = "#083208")) +
+    labs(
+      title = "Figure 4: Distribution of Happiness by Daily Food Budget",
+      subtitle = "Higher food budgets are clearly associated with higher happiness",
+      x = "Happiness (0 to 1)",
+      y = "Count",
+      fill = "Daily Food Budget"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+      plot.title = element_text(face = "bold"),
+    )
+```
+
+We chose histograms for this comparison because they show the full shape of each group's happiness distribution, rather than just comparing averages which would obscure important differences in spread and skew. In this plot, we explore the distribution of happiness scores, with each colour representing a different daily food budget. In this dataset, there are three food budget groups $12, $16, and $20 per day. The distributions are strikingly distinct. Residents who budget more for food are consistently happier. The $12/day group clusters in the lower happiness range, the $16/day group spreads across the middle, and the $20/day group is concentrated at the higher end. Access to adequate, quality food is widely recognized as one of the most fundamental indicators of quality of life (World Health Organization, 2023). It is not surprising, then, that residents who can afford to allocate more to their daily meals report higher overall happiness.
+
+### What Does This Tell Us?
+
+What do these two findings tell us about happiness? While we have already established that extra disposable income does not directly increase happiness, we now have evidence that income in general could, especially for people starting at a low income level. This extra income allows them to spend more on their necessities, and we have seen how that can meaningfully improve their well being.
+
+The pattern is clear spending $12 per day on food versus $20 per day creates a dramatic difference in reported happiness. Similarly, the difference between a $400/month apartment and a $1,200/month apartment is substantial. These are not luxurious purchases; They are investments in basic quality of life, nutrition, shelter, and access to neighborhood amenities. The residents who can comfortably afford these necessities report consistently higher happiness than those who struggle to meet them.
+
+Critically, this finding inverts our initial assumption. We began by assuming that extra disposable income (money left over after bills) would increase happiness. Instead, the data shows that it's the ability to comfortably spend on necessities that matters. A resident with $800/week in income but only $600/week of rent and food expenses has genuine discretionary income and reports higher happiness. A resident with $900/week income but $850/week in necessities, while technically slightly better off, reports lower happiness because they're squeezed financially.
+
+The key insight, then, is not how much money you have left over, but whether you have enough to live comfortably in the first place. This distinction has profound implications for how we measure economic well being.
+
+## Limitations and Alternative Explanations
+
+Several limitations should be considered when interpreting these findings. First, happiness is measured using a single joviality score on a 0 to 1 scale, which may not capture the full complexity of well being factors such as life satisfaction, mental health, and sense of purpose are not reflected in this measure.
+
+Second, our analysis is observational we can identify associations, but not causal relationships. For example, it is possible that happier people choose to spend more on food and housing, rather than spending causing happiness. We also cannot account for unmeasured confounding variables such as personality traits, social support networks, or employment stability all of which likely influence both income and happiness. An extroverted person, for instance, may report higher happiness and happen to live in a more expensive apartment due to lifestyle preferences, without one causing the other.
+
+Additionally, the rent and food budget categories in this dataset are relatively coarse (only three food budget levels), which limits the precision of our conclusions. Finally, while we observed diminishing returns of rent spending on happiness, this pattern could also reflect neighborhood level effects expensive apartments may be located in areas with better amenities, parks, and social infrastructure factors that boost well being independent of rent cost itself.
+
+
+## Conclusion
+
+We set out to investigate whether higher disposable income leads to higher happiness. The answer, based on our analysis of over 1,000 residents, is nuanced. Disposable income on its own shows little to no positive relationship with happiness and in some cases, the relationship is slightly negative. However, income still plays an indirect role. Residents who budget more for rent and food tend to report higher happiness, suggesting that the ability to comfortably meet one's basic needs is what truly matters. Once those needs are met, additional disposable income offers diminishing returns.
+
+These findings have implications for how we think about well being in our communities. Policies focused solely on increasing income may miss the mark instead, ensuring affordable access to quality housing and nutritious food may be more effective at improving overall happiness. As cost of living continues to rise, the question is not just how much people earn, but whether they can afford to live well.
+
+## References
+
+- Murthy, V. H. (2023). *Our Epidemic of Loneliness and Isolation: The U.S. Surgeon General's Advisory on the Healing Effects of Social Connection and Community*. U.S. Department of Health and Human Services. https://www.hhs.gov/sites/default/files/surgeon-general-social-connection-advisory.pdf
+
+- IEEE Visual Analytics Science and Technology (2022). *VAST Challenge 2022*. https://dl.acm.org/doi/10.1145/3166146.3166147
+
+- World Health Organization (2023). *Healthy diet*. https://www.who.int/news-room/fact-sheets/detail/healthy-diet
