@@ -1,5 +1,7 @@
 # The Happiness Paradox: Why Income Alone Is Not the Answer
 
+[View the live site](https://tyseer2335.github.io/The-Happiness-Paradox/)
+
 
 An exploratory data analysis investigating the relationship between income, spending habits, and self-reported happiness among 1,000+ residents of a simulated city.
 
