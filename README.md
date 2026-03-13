@@ -3,11 +3,11 @@
 [View the live site](https://tyseer2335.github.io/The-Happiness-Paradox/)
 
 
-An exploratory data analysis investigating the relationship between income, spending habits, and self-reported happiness among 1,000+ residents of a simulated city.
+An exploratory data analysis investigating the relationship between income, spending habits, and self reported happiness among 1,000+ residents of a simulated city.
 
 ## Overview
 
-Conventional wisdom suggests that more money leads to more happiness. This project challenges that assumption by analyzing detailed financial and behavioral data to uncover what actually drives well-being.
+Conventional wisdom suggests that more money leads to more happiness. This project challenges that assumption by analyzing detailed financial and behavioral data to uncover what actually drives well being.
 
 ## Dataset
 
